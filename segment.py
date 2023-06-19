@@ -81,7 +81,7 @@ def train(args):
         epoch = 20000 // train_steps
 
     iter_cnt = 1
-    min_eval_loss = 1000
+    min_valid_loss = 1000
     net.cuda()
     for epo in range(1, epoch + 1):
         net.train()
@@ -110,12 +110,12 @@ def train(args):
                 loss = criterion(output, batch_label)
             epo_eval_loss += loss.item()
 
-        if epo_eval_loss < min_eval_loss:
-            min_eval_loss = epo_eval_loss
-            save_file = save_dir + '/min_eval_loss.pt'
+        if epo_eval_loss < min_valid_loss:
+            min_valid_loss = epo_eval_loss
+            save_file = save_dir + '/min_valid_loss.pt'
             torch.save(net.state_dict(), save_file)
             print('-' * 50)
-            print('Saved checkpoint as min_eval_loss:', min_eval_loss)
+            print('Saved checkpoint as min_valid_loss:', min_valid_loss)
             print('-' * 50)
 
 
@@ -124,7 +124,7 @@ def eval(args):
 
     save_dir = './Results/' + args.save_tag + '-' + args.net_name + '-h' + str(args.height) + '-w' + str(args.width)
 
-    pt_path = save_dir + '/min_eval_loss.pt'
+    pt_path = save_dir + '/min_valid_loss.pt'
     assert os.path.exists(pt_path)
 
     eval_dir = SegDataset(args.eval_dir, num_classes=args.num_classes, input_hw=(args.height, args.width),
