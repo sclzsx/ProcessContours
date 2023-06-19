@@ -197,7 +197,7 @@ def demo(net, pt_path, input_hw, test_img_dir, out_dir):
 
 
 def main(args):
-    if args.mode == 'trainvalid':
+    if args.mode == 'train':
         train(args)
     elif args.mode == 'eval':
         eval(args)
@@ -205,16 +205,16 @@ def main(args):
         from unet import UNet
         net = UNet(n_classes=args.num_classes)
 
-        test_img_dir = './data/5000_ori'
-        out_dir = './data/5000_out'
+        # input_hw = (896, 1280)
+        input_hw = (512, 512)  # 输入网络的尺寸，这里采用训练时的尺寸，其他尺寸也能跑通（但需要被16整除）。
+        test_img_dir = './data/5000_ori'  # 原图路径
+        out_dir = './data/5000_out'  # 分割结果保存路径
 
         if os.path.exists(out_dir):
             shutil.rmtree(out_dir)
         os.makedirs(out_dir, exist_ok=True)
         pt_path = './Results/' + args.save_tag + '-' + args.net_name + '-h' + str(args.height) + '-w' + str(
             args.width) + '/min_valid_loss.pt'
-        # input_hw = (896, 1280)
-        input_hw = (512, 512)
         demo(net, pt_path, input_hw, test_img_dir, out_dir)
 
 

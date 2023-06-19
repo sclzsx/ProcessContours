@@ -188,9 +188,9 @@ if __name__ == '__main__':
     # data_dir = './data/100_out'
     # save_dir = './data/100_method0'
 
-    WIN_SIZE = 4
-    METHOD = 1
-    data_dir = './data/5000_out'
-    save_dir = './data/5000_method1'
+    WIN_SIZE = 4  # 窗口大小
+    METHOD = 1  # 方法0为0617方案，方法1为0618方案
+    data_dir = './data/5000_out'  # 分割模型的结果
+    save_dir = './data/5000_method1'  # 消失区域的可视化
 
     process(data_dir, save_dir, WIN_SIZE, METHOD)
