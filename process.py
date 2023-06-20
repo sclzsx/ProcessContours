@@ -148,10 +148,15 @@ def process(data_dir, save_dir, WIN_SIZE, METHOD):
         mask_pre = read_mask(path_pre)
         mask_nex = read_mask(path_nex)
 
-        con_cur, _ = cv2.findContours(mask_cur, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-        con_pre, _ = cv2.findContours(mask_pre, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-        con_nex, _ = cv2.findContours(mask_nex, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-
+        try:
+            con_cur, _ = cv2.findContours(mask_cur, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+            con_pre, _ = cv2.findContours(mask_pre, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+            con_nex, _ = cv2.findContours(mask_nex, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+        except:
+            _, con_cur, _ = cv2.findContours(mask_cur, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+            _, con_pre, _ = cv2.findContours(mask_pre, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+            _, con_nex, _ = cv2.findContours(mask_nex, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+    
         disappear_map = np.zeros((h, w), dtype='float32')
 
         if METHOD == 0:

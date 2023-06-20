@@ -1,6 +1,6 @@
 import json
 from argparse import ArgumentParser
-from tensorboardX import SummaryWriter
+# from tensorboardX import SummaryWriter
 import shutil
 import os
 import cv2
@@ -71,9 +71,9 @@ def train(args):
     criterion = nn.CrossEntropyLoss().cuda()
     optimizer = torch.optim.Adam(net.parameters(), lr=args.lr)
 
-    writer = SummaryWriter(save_dir + '/log')
-    if os.path.exists(save_dir + '/log'):
-        shutil.rmtree(save_dir + '/log')
+    # writer = SummaryWriter(save_dir + '/log')
+    # if os.path.exists(save_dir + '/log'):
+    #     shutil.rmtree(save_dir + '/log')
 
     if args.epoch is not None:
         epoch = args.epoch
@@ -93,7 +93,7 @@ def train(args):
             iter_loss = loss.item()
             print('Epoch:{} Batch:[{}/{}] Loss:{}'.format(epo, str(batch_id + 1).zfill(3), train_steps,
                                                           round(iter_loss, 4)))
-            writer.add_scalar('Train loss', iter_loss, iter_cnt)
+            # writer.add_scalar('Train loss', iter_loss, iter_cnt)
 
             optimizer.zero_grad()
             loss.backward()
