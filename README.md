@@ -1,6 +1,6 @@
 #### 路径说明
 
-datasets里存放训练分割网络的数据集。
+datasets里存放训练分割网络的数据集。若首次训练，需先运行dataset.py，把标注文件*.json转为掩码*mask.png.
 data里存放需处理的图片。以5000为例，5000_ori里存原图，5000_out存分割结果，5000_method1存方法1的中间结果，5000_method1.jpg为最终结果，5000_method1.bin为二进制格式，可用read_result.m打开进行后续处理。
 
 #### 分割模型说明

@@ -19,106 +19,65 @@ def cal_iou(mask1, mask2):
     return iou
 
 
-def judge_disappear_contour(h, w, contour, contours, IOU_THRES):
+def cal_contours(mask):
+    try:
+        con, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+    except:
+        _, con, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+    return con
+
+
+def judge_disappear_area_cur_next(h, w, con_cur, con_next, iou_thres, judge_factor):
     zeros_u8 = np.zeros((h, w), dtype='uint8')
 
-    area = cv2.drawContours(zeros_u8.copy(), [contour], -1, 1, thickness=-1)
-    ious, areas = [], []
-    for con_tmp in contours:
+    area_cur = cv2.drawContours(zeros_u8.copy(), [con_cur], -1, 1, thickness=-1)
+    ious, areas_next = [], []
+    for con_tmp in con_next:
         area_tmp = cv2.drawContours(zeros_u8.copy(), [con_tmp], -1, 1, thickness=-1)
-        iou = cal_iou(area, area_tmp)
-        areas.append(area_tmp)
+        iou = cal_iou(area_cur, area_tmp)
+        areas_next.append(area_tmp)
         ious.append(iou)
     max_iou = max(ious)
 
-    if max_iou <= IOU_THRES:
+    if max_iou == 0:  # 若不存在相交关系，则con_cur一定是消失区域
         return True
 
-    return False
-
-
-def judge_disappear_contour_new(h, w, contour, contours, IOU_THRES):
-    zeros_u8 = np.zeros((h, w), dtype='uint8')
-
-    area = cv2.drawContours(zeros_u8.copy(), [contour], -1, 1, thickness=-1)
-    ious, areas = [], []
-    for con_tmp in contours:
-        area_tmp = cv2.drawContours(zeros_u8.copy(), [con_tmp], -1, 1, thickness=-1)
-        iou = cal_iou(area, area_tmp)
-        areas.append(area_tmp)
-        ious.append(iou)
-    max_iou = max(ious)
-
-    if max_iou == 0:
-        return True
-
-    if max_iou > 0 and max_iou <= IOU_THRES:
+    if max_iou > 0 and max_iou <= iou_thres:  # 若存在相交关系，需进一步通过面积判定是否采用con_cur
         matched_idx = ious.index(max_iou)
-        matched_area = areas[matched_idx]
-        matched_area_val = np.sum(matched_area)  # Sn+1
-        area_val = np.sum(area)  # Sn-2
-        if area_val * 0.2 >= matched_area_val:
+        matched_area = areas_next[matched_idx]
+        matched_area_val = np.sum(matched_area)
+        area_val = np.sum(area_cur)
+        if judge_factor * area_val >= matched_area_val:  # 满足 0.6 * Sn >= Sn+1 时，也视为消失区域，采用该con_cur
             return True
 
     return False
 
 
-def get_disappear_area(h, w, contour, contours):
+def delete_disappear_area_cur_prepre(h, w, con_cur, con_prepre, delete_factor):
     zeros_u8 = np.zeros((h, w), dtype='uint8')
 
-    area = cv2.drawContours(zeros_u8.copy(), [contour], -1, 1, thickness=-1)
-    ious, areas = [], []
-    for con_tmp in contours:
+    area_cur = cv2.drawContours(zeros_u8.copy(), [con_cur], -1, 1, thickness=-1)
+    ious, areas_prepre = [], []
+    for con_tmp in con_prepre:
         area_tmp = cv2.drawContours(zeros_u8.copy(), [con_tmp], -1, 1, thickness=-1)
-        iou = cal_iou(area, area_tmp)
-        areas.append(area_tmp)
+        iou = cal_iou(area_cur, area_tmp)
+        areas_prepre.append(area_tmp)
         ious.append(iou)
     max_iou = max(ious)
 
-    ret_contour = contour
+    ret_contour = con_cur
     gray_value = 1
 
     if max_iou > 0:
         matched_idx = ious.index(max_iou)
-        matched_area = areas[matched_idx]
+        matched_area = areas_prepre[matched_idx]
         matched_area_val = np.sum(matched_area)  # Sn-2
-        area_val = np.sum(area)  # Sn
+        area_val = np.sum(area_cur)  # Sn
 
-        if area_val < matched_area_val:
+        if matched_area_val > area_val:  # 确保满足前提Sn-2 > Sn，否则一定完全保留该消失区域，即灰度值为默认值1
             gray_value = matched_area_val / area_val
 
-    ret_area = cv2.drawContours(zeros_u8.copy(), [ret_contour], -1, 1, thickness=-1)
-    ret_area = ret_area.astype('float32')
-    ret_area = ret_area * gray_value
-
-    return ret_area
-
-
-def get_disappear_area_new(h, w, contour, contours):
-    zeros_u8 = np.zeros((h, w), dtype='uint8')
-
-    area = cv2.drawContours(zeros_u8.copy(), [contour], -1, 1, thickness=-1)
-    ious, areas = [], []
-    for con_tmp in contours:
-        area_tmp = cv2.drawContours(zeros_u8.copy(), [con_tmp], -1, 1, thickness=-1)
-        iou = cal_iou(area, area_tmp)
-        areas.append(area_tmp)
-        ious.append(iou)
-    max_iou = max(ious)
-
-    ret_contour = contour
-    gray_value = 1
-
-    if max_iou > 0:
-        matched_idx = ious.index(max_iou)
-        matched_area = areas[matched_idx]
-        matched_area_val = np.sum(matched_area)  # Sn
-        area_val = np.sum(area)  # Sn-2
-
-        if area_val > matched_area_val:
-            gray_value = area_val / matched_area_val
-
-            if matched_area_val > 0.5 * matched_area_val:
+            if area_val > delete_factor * matched_area_val:  # 满足 Sn > 0.5 * Sn-2 时，删除该消失区域，即将其灰度值置0
                 gray_value = 0
 
     ret_area = cv2.drawContours(zeros_u8.copy(), [ret_contour], -1, 1, thickness=-1)
@@ -128,7 +87,7 @@ def get_disappear_area_new(h, w, contour, contours):
     return ret_area
 
 
-def process(data_dir, save_dir, WIN_SIZE, METHOD):
+def process(data_dir, save_dir, INTERSECT_IOU, JUDGE_FACTOR, DELETE_FACTOR):
     if os.path.exists(save_dir):
         shutil.rmtree(save_dir)
     os.makedirs(save_dir, exist_ok=True)
@@ -139,43 +98,32 @@ def process(data_dir, save_dir, WIN_SIZE, METHOD):
     h, w = tmp.shape
     result = np.zeros((h, w), dtype='float32')
 
-    for N in range(WIN_SIZE - 2, len(img_paths) - 1):
-        path_cur = img_paths[N]  # Sn
-        path_pre = img_paths[N - WIN_SIZE - 2]  # Sn-2
-        path_nex = img_paths[N + 1]  # Sn+1
+    for N in range(4, len(img_paths) - 1):
+        if N < 15: continue
 
-        mask_cur = read_mask(path_cur)
-        mask_pre = read_mask(path_pre)
-        mask_nex = read_mask(path_nex)
+        con_prepreprepre = cal_contours(read_mask(img_paths[N - 4]))  # Sn-4
+        con_preprepre = cal_contours(read_mask(img_paths[N - 3]))  # Sn-3
+        con_prepre = cal_contours(read_mask(img_paths[N - 2]))  # Sn-2
+        con_pre = cal_contours(read_mask(img_paths[N - 1]))  # Sn-1
+        con_cur = cal_contours(read_mask(img_paths[N]))  # Sn
+        con_next = cal_contours(read_mask(img_paths[N + 1]))  # Sn+1
 
-        try:
-            con_cur, _ = cv2.findContours(mask_cur, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-            con_pre, _ = cv2.findContours(mask_pre, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-            con_nex, _ = cv2.findContours(mask_nex, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-        except:
-            _, con_cur, _ = cv2.findContours(mask_cur, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-            _, con_pre, _ = cv2.findContours(mask_pre, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-            _, con_nex, _ = cv2.findContours(mask_nex, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-    
         disappear_map = np.zeros((h, w), dtype='float32')
 
-        if METHOD == 0:
-            for j in range(len(con_cur)):
-                if judge_disappear_contour(h, w, con_cur[j], con_nex, IOU_THRES=0):  # Sn和Sn+1比较，消失区域来自Sn
-                    disappear_area = get_disappear_area(h, w, con_cur[j], con_pre)  # Sn和Sn-2之间的关系决定灰度值
-                    disappear_map = disappear_map + disappear_area
-
-        elif METHOD == 1:
-            for j in range(len(con_pre)):
-                if judge_disappear_contour_new(h, w, con_pre[j], con_nex, IOU_THRES=0.2):  # Sn-2和Sn+1比较，消失区域来自Sn-2
-                    disappear_area = get_disappear_area_new(h, w, con_pre[j], con_cur)  # Sn-2和Sn之间的关系决定灰度值
-                    disappear_map = disappear_map + disappear_area
+        for i in range(len(con_cur)):
+            if judge_disappear_area_cur_next(h, w, con_cur[i], con_next, INTERSECT_IOU,
+                                             JUDGE_FACTOR):  # Sn和Sn+1比较，消失区域来自Sn
+                disappear_area = delete_disappear_area_cur_prepre(h, w, con_cur[i], con_prepre,
+                                                                  DELETE_FACTOR)  # Sn和Sn-2之间的关系决定消失区域灰度值
+                disappear_map = disappear_map + disappear_area
 
         result = result + disappear_map
         print('sliding window at [%5d/%5d] done.' % (N, len(img_paths)))
 
         save_disappear_img_path = save_dir + '/' + Path(img_paths[N]).name + '.disappear.jpg'
         cv2.imwrite(save_disappear_img_path, np.clip(disappear_map * 200, 0, 255).astype('uint8'))
+
+        if N > 25: break
 
     plt.imshow(result)
     plt.axis('off')
@@ -188,14 +136,9 @@ def process(data_dir, save_dir, WIN_SIZE, METHOD):
 
 
 if __name__ == '__main__':
-    # WIN_SIZE = 4
-    # METHOD = 0
-    # data_dir = './data/100_out'
-    # save_dir = './data/100_method0'
-
-    WIN_SIZE = 4  # 窗口大小
-    METHOD = 1  # 方法0为0617方案，方法1为0618方案
     data_dir = './data/5000_out'  # 分割模型的结果
-    save_dir = './data/5000_method1'  # 消失区域的可视化
-
-    process(data_dir, save_dir, WIN_SIZE, METHOD)
+    save_dir = './data/5000_method1_test3'  # 消失区域的可视化
+    INTERSECT_IOU = 0.2  # 判断存在相交的IOU阈值
+    JUDGE_FACTOR = 0.6  # 初判消失区域的参数（步骤一）
+    DELETE_FACTOR = 0.5  # 删除消失区域的参数（步骤二）
+    process(data_dir, save_dir, INTERSECT_IOU, JUDGE_FACTOR, DELETE_FACTOR)
