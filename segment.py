@@ -172,10 +172,12 @@ def demo(net, pt_path, input_hw, test_img_dir, out_dir):
     net.cuda()
 
     net.eval()
-    for img_path in Path(test_img_dir).glob('*.jpg'):
-        save_name = img_path.name + '.out.png'
+    img_paths = [img_path for img_path in Path(test_img_dir).glob('*.jpg')]
+    N = len(img_paths)
+    for i, img_path in enumerate(img_paths):
+        save_name = img_path.name[:-4] + '_out.png'
         img_path = str(img_path)
-        print(img_path)
+        print('Segmentation [%5d / %5d] %s' % (i, N, img_path))
 
         image = Image.open(img_path)
         h, w = image.height, image.width
@@ -194,6 +196,7 @@ def demo(net, pt_path, input_hw, test_img_dir, out_dir):
         output = cv2.resize(output, (w, h))
         output = (output * 255).astype('uint8')
         cv2.imwrite(out_dir + '/' + save_name, output)
+    print('Segment done.')
 
 
 def main(args):

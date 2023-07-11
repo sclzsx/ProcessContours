@@ -13,3 +13,4 @@ data里存放需处理的图片。以5000为例，5000_ori里存原图，5000_ou
 
 通过segment.py运行demo，生成的结果在data/*_out. 再运行process.py即可进行处理。
 process.py中，参数说明见if __name__ == '__main__'里的注释。
+read_result.m里有读取结果bin的代码，可继续处理。
